@@ -1,0 +1,45 @@
+{
+  "topics": [
+    "artificial intelligence",
+    "machine learning",
+    "deep learning",
+    "natural language processing",
+    "computer vision",
+    "startup funding",
+    "venture capital",
+    "product launches",
+    "acquisitions and mergers",
+    "cryptocurrency",
+    "blockchain technology",
+    "cloud computing",
+    "cybersecurity",
+    "developer tools",
+    "open source software"
+  ],
+  "keywords": [
+    "AI",
+    "ML",
+    "GPT",
+    "LLM",
+    "funding",
+    "acquisition",
+    "IPO",
+    "launch",
+    "beta",
+    "API",
+    "platform",
+    "SaaS",
+    "enterprise",
+    "startup"
+  ],
+  "exclude_keywords": [
+    "sponsored",
+    "advertisement",
+    "promo"
+  ],
+  "filtering_settings": {
+    "min_relevance_score": 0.5,
+    "use_llm_filtering": true,
+    "strict_mode": false
+  }
+}
