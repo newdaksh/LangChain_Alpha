@@ -147,41 +147,53 @@ def run_workflow(
         logger.info("=" * 60)
         logger.info("Starting Daily News Summarization Workflow")
         logger.info("=" * 60)
-        
+
+        # If configured, prefer the new LangChain v1 agent workflow
+        use_agent = os.getenv("USE_AGENT", "1") not in ("0", "false", "False")
+        if use_agent:
+            logger.info("Using LangChain v1 create_agent workflow")
+            try:
+                from agent.agents import create_news_agent
+                agent = create_news_agent()
+                # delegate to agent's run method which uses middleware and structured output
+                return agent.run_daily_summary_sync(sources_config.get("sources", []), {"topics": topics_config.get("topics", []), "keywords": topics_config.get("keywords", [])})
+            except Exception as e:
+                logger.warning(f"Agent run failed, falling back to pipeline: {str(e)}")
+
         # Step 1: Fetch news from sources using Perplexity
         logger.info("\n📡 Step 1: Fetching news from sources...")
         sources = sources_config.get("sources", [])
         topics = topics_config.get("topics", [])
         max_per_source = sources_config.get("search_settings", {}).get("max_results_per_source", 5)
-        
+
         articles = search_multiple_sources(
             sources=sources,
             topics=topics,
-            max_per_source=max_per_source
+            max_per_source=max_per_source,
         )
-        
+
         results["articles_found"] = len(articles)
         logger.info(f"✓ Found {len(articles)} articles")
-        
+
         if not articles:
             logger.warning("No articles found. Exiting.")
             results["status"] = "completed_no_articles"
             return results
-        
+
         # Step 2: Filter articles using Ollama LLM
         logger.info("\n🔍 Step 2: Filtering articles by relevance...")
         keywords = topics_config.get("keywords", [])
         min_score = topics_config.get("filtering_settings", {}).get("min_relevance_score", 0.6)
         use_llm = topics_config.get("filtering_settings", {}).get("use_llm_filtering", True)
-        
+
         filtered_articles = filter_articles_by_relevance(
             articles=articles,
             topics=topics,
             keywords=keywords,
             min_score=min_score,
-            use_llm=use_llm
+            use_llm=use_llm,
         )
-        
+
         # Apply exclude filters
         exclude_keywords = topics_config.get("exclude_keywords", [])
         if exclude_keywords:

@@ -20,6 +20,9 @@ from .tools import (
     save_raw_data,
     save_summary
 )
+from .middleware.pii_redaction import PIIMiddleware
+from .middleware.summarization import SummarizationMiddleware
+from .middleware.human_in_loop import HumanInTheLoopMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +65,7 @@ class NewsAgentChain:
         
         # Create agent with tools using LangChain's create_agent
         self.agent = self._create_agent()
-        
+
         logger.info(f"NewsAgentChain initialized with Perplexity model: {perplexity_model}")
     
     def _get_tools(self) -> List:
@@ -103,14 +106,33 @@ Focus on actionable insights and key information."""
         
         # Get tools for the agent
         tools = self._get_tools()
-        
-        # Create the agent using LangChain's create_agent function
+
+        # Initialize middleware instances
+        middleware = [
+            PIIMiddleware(),
+            SummarizationMiddleware(),
+            HumanInTheLoopMiddleware(sensitive_tools=["save_summary", "save_raw_data"]),
+        ]
+
+        # Try to initialize a LangGraph client for state & checkpoints (optional)
+        graph = None
+        try:
+            import langgraph
+            # a very small, safe usage pattern: get/create a graph client if available
+            graph = getattr(langgraph, "GraphClient", None)
+        except Exception:
+            # LangGraph not available in all environments; continue without it
+            graph = None
+
+        # Create the agent using LangChain's create_agent function, passing middleware
         agent = create_agent(
             model=self.llm,
             tools=tools,
-            system_prompt=system_prompt
+            system_prompt=system_prompt,
+            middleware=middleware,
+            graph=graph,
         )
-        
+
         return agent
     
     async def run_daily_summary(
@@ -134,12 +156,18 @@ Focus on actionable insights and key information."""
             # Prepare user message for agent
             user_message = self._create_user_message(sources, topics)
             
-            # Execute agent with message-based interface
-            result = await self.agent.ainvoke({
-                "messages": [
-                    {"role": "user", "content": user_message}
-                ]
-            })
+            # Execute agent with message-based interface. Prefer structured output.
+            payload = {"messages": [{"role": "user", "content": user_message}]}
+            result = await self.agent.ainvoke(payload)
+            # Normalize result to a dict if agent returned a JSON string
+            if isinstance(result, str):
+                try:
+                    import json
+                    parsed = json.loads(result)
+                    result = parsed
+                except Exception:
+                    # leave as string
+                    pass
             
             logger.info("Daily summary workflow completed successfully")
             return {
@@ -178,12 +206,16 @@ Focus on actionable insights and key information."""
             # Prepare user message for agent
             user_message = self._create_user_message(sources, topics)
             
-            # Execute agent with message-based interface
-            result = self.agent.invoke({
-                "messages": [
-                    {"role": "user", "content": user_message}
-                ]
-            })
+            # Execute agent with message-based interface. Prefer structured output.
+            payload = {"messages": [{"role": "user", "content": user_message}]}
+            result = self.agent.invoke(payload)
+            if isinstance(result, str):
+                try:
+                    import json
+                    parsed = json.loads(result)
+                    result = parsed
+                except Exception:
+                    pass
             
             logger.info("Daily summary workflow completed")
             return {

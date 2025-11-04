@@ -17,6 +17,17 @@ from src.agent.tools import (
 )
 
 
+def _parse_result(res):
+    """Helper that accepts either JSON string or dict and returns dict."""
+    import json
+    if isinstance(res, str):
+        try:
+            return json.loads(res)
+        except Exception:
+            return {"raw": res}
+    return res
+
+
 class TestSearchNewsTool:
     """Tests for Perplexity search tool."""
     
@@ -40,9 +51,9 @@ class TestSearchNewsTool:
             "source_name": "TechCrunch",
             "max_results": 5
         })
-        
+
         # Parse result
-        result_data = json.loads(result)
+        result_data = _parse_result(result)
         
         # Assertions
         assert result_data["status"] == "success"
@@ -59,8 +70,8 @@ class TestSearchNewsTool:
             "query": "AI news",
             "max_results": 5
         })
-        
-        result_data = json.loads(result)
+
+        result_data = _parse_result(result)
         
         assert result_data["status"] == "error"
         assert "error" in result_data
@@ -89,8 +100,8 @@ class TestFilterTool:
             "topics": "AI, machine learning",
             "keywords": "AI, ML"
         })
-        
-        result_data = json.loads(result)
+
+        result_data = _parse_result(result)
         
         assert result_data["status"] == "success"
         assert result_data["filtered_count"] == 1
@@ -101,8 +112,8 @@ class TestFilterTool:
             "articles_json": "invalid json",
             "topics": "AI"
         })
-        
-        result_data = json.loads(result)
+
+        result_data = _parse_result(result)
         assert result_data["status"] == "error"
 
 
@@ -122,8 +133,8 @@ class TestSummarizeTool:
         result = summarize_articles_with_ollama.invoke({
             "articles_json": articles_json
         })
-        
-        result_data = json.loads(result)
+
+        result_data = _parse_result(result)
         
         assert result_data["status"] == "success"
         assert result_data["count"] == 1
@@ -148,8 +159,8 @@ class TestSaveTools:
             "articles_json": json.dumps(articles_data),
             "filename": "test_raw.json"
         })
-        
-        result_data = json.loads(result)
+
+        result_data = _parse_result(result)
         
         assert result_data["status"] == "success"
         assert "filepath" in result_data
@@ -173,8 +184,8 @@ class TestSaveTools:
             "summaries_json": json.dumps(summaries_data),
             "format_type": "csv"
         })
-        
-        result_data = json.loads(result)
+
+        result_data = _parse_result(result)
         
         assert result_data["status"] == "success"
         assert len(result_data["files"]) >= 1
@@ -214,7 +225,7 @@ class TestToolIntegration:
             "query": "AI news",
             "max_results": 5
         })
-        search_data = json.loads(search_result)
+        search_data = _parse_result(search_result)
         
         assert search_data["status"] == "success"
         
@@ -223,7 +234,7 @@ class TestToolIntegration:
             "articles_json": search_result,
             "topics": "AI"
         })
-        filter_data = json.loads(filter_result)
+        filter_data = _parse_result(filter_result)
         
         assert filter_data["status"] == "success"
         
@@ -231,7 +242,7 @@ class TestToolIntegration:
         summary_result = summarize_articles_with_ollama.invoke({
             "articles_json": filter_result
         })
-        summary_data = json.loads(summary_result)
+        summary_data = _parse_result(summary_result)
         
         assert summary_data["status"] == "success"
         assert len(summary_data["summaries"]) > 0

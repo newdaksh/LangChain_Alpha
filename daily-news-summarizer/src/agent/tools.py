@@ -24,7 +24,7 @@ def search_news_with_perplexity(
     query: str,
     source_name: str = "",
     max_results: int = 5
-) -> str:
+) -> dict:
     """
     Search for news articles using Perplexity API.
     
@@ -52,19 +52,15 @@ def search_news_with_perplexity(
         )
         
         logger.info(f"Found {len(articles)} articles")
-        return json.dumps({
+        return {
             "status": "success",
             "count": len(articles),
-            "articles": articles
-        }, indent=2)
+            "articles": articles,
+        }
         
     except Exception as e:
         logger.error(f"Error searching news: {str(e)}")
-        return json.dumps({
-            "status": "error",
-            "error": str(e),
-            "articles": []
-        })
+        return {"status": "error", "error": str(e), "articles": []}
 
 
 @tool
@@ -72,7 +68,7 @@ def filter_articles_with_ollama(
     articles_json: str,
     topics: str,
     keywords: str = ""
-) -> str:
+) -> dict:
     """
     Filter articles based on relevance to topics using Ollama LLM.
     
@@ -108,24 +104,20 @@ def filter_articles_with_ollama(
         )
         
         logger.info(f"Filtered to {len(filtered)} relevant articles")
-        return json.dumps({
+        return {
             "status": "success",
             "original_count": len(articles),
             "filtered_count": len(filtered),
-            "articles": filtered
-        }, indent=2)
+            "articles": filtered,
+        }
         
     except Exception as e:
         logger.error(f"Error filtering articles: {str(e)}")
-        return json.dumps({
-            "status": "error",
-            "error": str(e),
-            "articles": []
-        })
+        return {"status": "error", "error": str(e), "articles": []}
 
 
 @tool
-def summarize_articles_with_ollama(articles_json: str) -> str:
+def summarize_articles_with_ollama(articles_json: str) -> dict:
     """
     Generate concise summaries for articles using Ollama LLM.
     
@@ -151,23 +143,15 @@ def summarize_articles_with_ollama(articles_json: str) -> str:
         summarized = generate_article_summaries(articles)
         
         logger.info(f"Generated summaries for {len(summarized)} articles")
-        return json.dumps({
-            "status": "success",
-            "count": len(summarized),
-            "summaries": summarized
-        }, indent=2)
+        return {"status": "success", "count": len(summarized), "summaries": summarized}
         
     except Exception as e:
         logger.error(f"Error generating summaries: {str(e)}")
-        return json.dumps({
-            "status": "error",
-            "error": str(e),
-            "summaries": []
-        })
+        return {"status": "error", "error": str(e), "summaries": []}
 
 
 @tool
-def save_raw_data(articles_json: str, filename: str = "") -> str:
+def save_raw_data(articles_json: str, filename: str = "") -> dict:
     """
     Save raw article data to disk for archival purposes.
     
@@ -200,22 +184,15 @@ def save_raw_data(articles_json: str, filename: str = "") -> str:
             json.dump(articles_data, f, indent=2, ensure_ascii=False)
         
         logger.info(f"Saved raw data to {filepath}")
-        return json.dumps({
-            "status": "success",
-            "filepath": filepath,
-            "count": len(articles_data.get("articles", []))
-        })
+        return {"status": "success", "filepath": filepath, "count": len(articles_data.get("articles", []))}
         
     except Exception as e:
         logger.error(f"Error saving raw data: {str(e)}")
-        return json.dumps({
-            "status": "error",
-            "error": str(e)
-        })
+        return {"status": "error", "error": str(e)}
 
 
 @tool
-def save_summary(summaries_json: str, format_type: str = "both") -> str:
+def save_summary(summaries_json: str, format_type: str = "both") -> dict:
     """
     Save article summaries in CSV and/or Markdown format.
     
@@ -267,15 +244,8 @@ def save_summary(summaries_json: str, format_type: str = "both") -> str:
             saved_files.append(md_path)
             logger.info(f"Saved Markdown to {md_path}")
         
-        return json.dumps({
-            "status": "success",
-            "files": saved_files,
-            "count": len(summaries)
-        })
+        return {"status": "success", "files": saved_files, "count": len(summaries)}
         
     except Exception as e:
         logger.error(f"Error saving summaries: {str(e)}")
-        return json.dumps({
-            "status": "error",
-            "error": str(e)
-        })
+        return {"status": "error", "error": str(e)}

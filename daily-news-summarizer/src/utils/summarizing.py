@@ -34,56 +34,60 @@ def generate_article_summaries(
     if not articles:
         logger.warning("No articles to summarize")
         return []
-    
+
+    summarized_articles: List[Dict[str, Any]] = []
+
     try:
         # Initialize Ollama
         ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
         ollama_model = os.getenv("OLLAMA_MODEL", "llama3.2")
-        
+
         llm = ChatOllama(
             base_url=ollama_url,
             model=ollama_model,
-            temperature=0.4  # Moderate temperature for creative but focused summaries
+            temperature=0.4,  # Moderate temperature for creative but focused summaries
         )
-        
-        summarized_articles = []
-        
+
         logger.info(f"Generating summaries for {len(articles)} articles")
-        
+
         for idx, article in enumerate(articles, 1):
             try:
-                # Prepare content
                 title = article.get("title", "No title")
                 snippet = article.get("snippet", "")
                 source = article.get("source", "Unknown")
-                
+
                 # Create summary prompt based on style
                 summary = _generate_summary_with_llm(
-                    llm=llm,
-                    title=title,
-                    snippet=snippet,
-                    source=source,
-                    style=summary_style
+                    llm=llm, title=title, snippet=snippet, source=source, style=summary_style
                 )
-                
-                # Add summary to article
+
+                # Add structured summary and content blocks to article
                 article["summary"] = summary
                 article["summary_style"] = summary_style
                 article["summarized_at"] = _get_timestamp()
-                
+
+                # Create standard content blocks following LangChain v1 ideas
+                content_blocks = [
+                    {"type": "summary", "text": summary},
+                    {"type": "source", "text": source},
+                    {"type": "reasoning", "text": f"Extracted key points from title and snippet for {title}"},
+                ]
+
+                article["content_blocks"] = content_blocks
+
                 summarized_articles.append(article)
                 logger.debug(f"Summarized article {idx}/{len(articles)}")
-                
+
             except Exception as e:
                 logger.error(f"Error summarizing article {idx}: {str(e)}")
-                # Add fallback summary
                 article["summary"] = _generate_fallback_summary(article)
                 article["summary_style"] = "fallback"
+                article["content_blocks"] = [{"type": "summary", "text": article["summary"]}]
                 summarized_articles.append(article)
-        
+
         logger.info(f"Successfully summarized {len(summarized_articles)} articles")
         return summarized_articles
-        
+
     except Exception as e:
         logger.error(f"Error in summarization process: {str(e)}")
         # Return articles with fallback summaries
